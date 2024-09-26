@@ -138,6 +138,8 @@ if uploaded_file is not None:
             order_info = grouped_data[grouped_data['orderID'] == order_id].iloc[0]
             contract_values = order_info['contract']
             actual_values = order_info['actual']
+            year = order_info['year']
+            given_values = order_info['given']
 
             # Prediction using historical data
             predicted_amount = time_series_forecasting(contract_values, actual_values)
@@ -151,9 +153,10 @@ if uploaded_file is not None:
 
             # Create a year-wise breakdown of contract and actual production
             year_data = pd.DataFrame({
-                'Year': [f'Year {i+1}' for i in range(len(contract_values))],
+                'Year': year,
                 'Contract (tons)': contract_values,
-                'Actual (tons)': actual_values
+                'Actual (tons)': actual_values,
+                'Given (bath)': given_values
             })
 
             # Display Data Details in a formatted table
