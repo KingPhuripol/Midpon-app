@@ -88,53 +88,52 @@ st.markdown("""
 # Streamlit app title
 st.title("🌾 Agriculture Loan Prediction and Sugar Cane Production Analysis 🌾")
 
-# Section for Loan Prediction
-st.header("Loan Prediction and Grading")
-order_id = st.text_input("Enter the Order ID for Loan Prediction:").strip().lower()
+# Input Section for Loan Prediction and Sugar Cane Production
+st.header("Loan Prediction and Sugar Cane Production Analysis")
+order_id = st.text_input("Enter the Order ID:").strip().lower()
 contract_amount = st.number_input("Enter the contract amount (tons):", min_value=0.0, step=0.1)
 
-if st.button("Predict Loan"):
-    if order_id in df['orderID'].values:
+if st.button("Predict and Analyze"):
+    if order_id in grouped_data['orderID'].values:
+        # Fetch the details for the given Order ID
+        order_info = grouped_data[grouped_data['orderID'] == order_id].iloc[0]
+        contract_values = order_info['contract']
+        actual_values = order_info['actual']
         predicted_amount = time_series_forecasting(contract_amount)
         grade = apply_grading(predicted_amount, contract_amount)
-        
-        st.markdown(f"### Prediction Result for Order ID: **{order_id}**")
+
+        # Display Prediction and Grading
+        st.markdown(f"### Prediction Result for Order ID: **{order_id.upper()}**")
         st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
         st.metric("Assigned Grade", grade)
-        st.write(f"Based on the prediction, the contract for order **{order_id}** will likely send **{predicted_amount:.2f} tons** this year with a grade of **{grade}**.")
+        st.write(f"Based on the prediction, the contract for order **{order_id.upper()}** will likely send **{predicted_amount:.2f} tons** this year with a grade of **{grade}**.")
+        
+        # Create a year-wise breakdown of contract and actual production
+        year_data = pd.DataFrame({
+            'Year': [f'Year {i+1}' for i in range(len(contract_values))],
+            'Contract (tons)': contract_values,
+            'Actual (tons)': actual_values
+        })
+
+        # Display Data Details in a formatted table
+        st.markdown(f"### Details for Order ID: **{order_id.upper()}**")
+        st.write(f"**Gender**: {order_info['gender']}")
+        st.table(year_data)
+
+        # Plot for contract and actual values
+        years = list(range(1, len(contract_values) + 1))
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(years, contract_values, label='Contract (tons)', marker='o', color='green')
+        ax.plot(years, actual_values, label='Actual (tons)', marker='o', color='blue')
+        ax.set_title(f"Contract vs Actual Production for Order ID: {order_id.upper()}")
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Quantity (tons)")
+        ax.legend()
+        ax.grid(True)
+        plt.tight_layout()
+        st.pyplot(fig)
     else:
         st.error("Order ID not found in the dataset.")
-
-# Section for Sugar Cane Production Analysis
-st.header("Sugar Cane Production Analysis")
-order_id_production = st.text_input("Enter the Order ID for Sugar Cane Production Analysis:").strip().lower()
-
-if order_id_production in grouped_data['orderID'].values:
-    order_info = grouped_data[grouped_data['orderID'] == order_id_production].iloc[0]
-    contract_values = order_info['contract']
-    actual_values = order_info['actual']
-    
-    years = list(range(1, len(contract_values) + 1))
-    st.markdown(f"### Details for Order ID: **{order_id_production.upper()}**")
-    st.table(pd.DataFrame({
-        'Gender': [order_info['gender']],
-        'Contract (tons)': [contract_values],
-        'Actual (tons)': [actual_values]
-    }))
-    
-    # Plot for contract and actual values
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(years, contract_values, label='Contract (tons)', marker='o', color='green')
-    ax.plot(years, actual_values, label='Actual (tons)', marker='o', color='blue')
-    ax.set_title(f"Contract vs Actual Production for Order ID: {order_id_production.upper()}")
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Quantity (tons)")
-    ax.legend()
-    ax.grid(True)
-    plt.tight_layout()
-    st.pyplot(fig)
-else:
-    st.error("Order ID not found in the dataset.")
 
 # Footer for the app
 st.markdown("---")
