@@ -242,8 +242,8 @@ if uploaded_file is not None:
             st.table(year_data)
 
             # Plot for contract and actual values
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(year_range, contract_values, label='Contract (tons)', marker='o', color='green')
+            fig, ax = plt.subplots(figsize=(8, 4))  # Adjusted the figsize to make it smaller
+            ax.plot(year_range, contract_values, label='Contract (tons)', marker='o', color='orange')
             ax.plot(year_range, actual_values, label='Actual (tons)', marker='o', color='blue')
             ax.set_title(f"Contract vs Actual Production for Order ID: {order_id.upper()}")
             ax.set_xlabel("Year")
