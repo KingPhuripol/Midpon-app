@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Set the Streamlit page theme
 st.set_page_config(
@@ -102,20 +103,26 @@ if uploaded_file is not None:
         'actual': list
     }).reset_index()
 
-    # Simulate time series prediction function
-    def time_series_forecasting(contract_amount):
-        return contract_amount * 1.05  # Apply uniform prediction logic for all order IDs
+    # Enhanced Prediction Function based on historical data trends
+    def time_series_forecasting(contract_values, actual_values):
+        # Calculate percentage change between each year's actual production
+        changes = np.diff(actual_values) / np.array(actual_values[:-1]) * 100
+        # Use the average of past changes to predict the next year's production
+        avg_change = np.mean(changes)
+        last_year_actual = actual_values[-1]
+        predicted_value = last_year_actual * (1 + avg_change / 100)  # Apply average change to last year's production
+        return predicted_value
 
-    # Apply grading logic based on the percentage
+    # Apply dynamic grading based on predicted vs. contract values
     def apply_grading(predicted_amount, contract_amount):
         percentage = predicted_amount / contract_amount * 100
-        if percentage >= 100:
+        if percentage >= 110:  # Change threshold for 'A'
             return 'A'
-        elif 80 <= percentage < 100:
+        elif 90 <= percentage < 110:  # Adjusting range for 'A-'
             return 'A-'
-        elif 60 <= percentage < 80:
+        elif 70 <= percentage < 90:  # Adjusting range for 'B'
             return 'B'
-        elif 40 <= percentage < 60:
+        elif 50 <= percentage < 70:  # Adjusting range for 'C'
             return 'C'
         else:
             return 'D'
@@ -131,7 +138,9 @@ if uploaded_file is not None:
             order_info = grouped_data[grouped_data['orderID'] == order_id].iloc[0]
             contract_values = order_info['contract']
             actual_values = order_info['actual']
-            predicted_amount = time_series_forecasting(contract_amount)
+
+            # Prediction using historical data
+            predicted_amount = time_series_forecasting(contract_values, actual_values)
             grade = apply_grading(predicted_amount, contract_amount)
 
             # Display Prediction and Grading
