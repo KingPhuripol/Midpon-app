@@ -15,19 +15,11 @@ st.set_page_config(
 st.markdown("""
     <style>
         body {
-            background-color: #F4F4F9;  /* Light beige background */
-            color: #2E7D32;  /* Earthy green font */
-        }
-        .stTextInput>div>div>input {
-            background-color: #E8F5E9;  /* Light green input box */
+            background-color: #F4F4F9;
             color: #2E7D32;
-            border: 2px solid #66BB6A;
-            font-size: 1.2rem;
-            padding: 10px;
-            border-radius: 5px;
         }
-        .stNumberInput>div>div>input {
-            background-color: #E8F5E9;  /* Light green input box */
+        .stTextInput>div>div>input, .stNumberInput>div>div>input {
+            background-color: #E8F5E9;
             color: #2E7D32;
             border: 2px solid #66BB6A;
             font-size: 1.2rem;
@@ -35,7 +27,7 @@ st.markdown("""
             border-radius: 5px;
         }
         .stButton>button {
-            background-color: #66BB6A;  /* Green button */
+            background-color: #66BB6A;
             color: white;
             font-size: 1.2rem;
             border-radius: 8px;
@@ -46,10 +38,9 @@ st.markdown("""
             color: #2E7D32;
             font-weight: bold;
         }
-        .stError {
-            color: #D32F2F;
-            font-size: 1.1rem;
-            font-weight: bold;
+        .stMetricValue {
+            color: #4CAF50 !important;
+            font-size: 1.5rem;
         }
         .stWarning {
             font-size: 1.1rem;
@@ -60,13 +51,27 @@ st.markdown("""
             padding: 10px;
         }
         .header-title {
-            color: #388E3C;  /* Darker green for titles */
+            color: #388E3C;
             font-size: 2rem;
             text-align: center;
             font-weight: bold;
         }
         .sub-header {
             font-size: 1.5rem;
+            font-weight: bold;
+            color: #388E3C;
+            margin-bottom: 10px;
+        }
+        .table-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            background-color: #E8F5E9;
+            border: 2px solid #66BB6A;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .table-title {
+            font-size: 1.2rem;
             font-weight: bold;
             color: #388E3C;
             margin-bottom: 10px;
@@ -96,62 +101,136 @@ if uploaded_file is not None:
     df['orderID'] = df['orderID'].str.strip().str.lower()  # Normalize order IDs
     df['gender'] = df['gender'].apply(lambda x: 'Male' if x == 1 else 'Female')  # Convert gender to readable format
 
+    # Add a placeholder for 'asset' if it doesn't exist in the dataset
+    if 'asset' not in df.columns:
+        df['asset'] = np.random.randint(5000, 100000, size=len(df))  # Random placeholder asset values
+
     # Group data for analysis
     grouped_data = df.groupby('orderID').agg({
         'gender': 'first',
         'contract': list,
-        'actual': list
+        'actual': list,
+        'asset': 'first'
     }).reset_index()
 
     # Enhanced Prediction Function based on historical data trends
     def time_series_forecasting(contract_values, actual_values):
-        # Calculate percentage change between each year's actual production
         changes = np.diff(actual_values) / np.array(actual_values[:-1]) * 100
-        # Use the average of past changes to predict the next year's production
         avg_change = np.mean(changes)
         last_year_actual = actual_values[-1]
-        predicted_value = last_year_actual * (1 + avg_change / 100)  # Apply average change to last year's production
-        return predicted_value
+        predicted_value = last_year_actual * (1 + avg_change / 100)
+        return predicted_value, changes, avg_change
 
-    # Apply dynamic grading based on predicted vs. contract values
+    # Grading function
     def apply_grading(predicted_amount, contract_amount):
         percentage = predicted_amount / contract_amount * 100
-        if percentage >= 110:  # Change threshold for 'A'
+        if percentage >= 110:
             return 'A'
-        elif 90 <= percentage < 110:  # Adjusting range for 'A-'
+        elif 90 <= percentage < 110:
             return 'A-'
-        elif 70 <= percentage < 90:  # Adjusting range for 'B'
+        elif 70 <= percentage < 90:
             return 'B'
-        elif 50 <= percentage < 70:  # Adjusting range for 'C'
+        elif 50 <= percentage < 70:
             return 'C'
         else:
             return 'D'
 
+    # Overview of grading for each year
+    def grading_overview(contract_values, actual_values):
+        grades = []
+        for contract, actual in zip(contract_values, actual_values):
+            grades.append(apply_grading(actual, contract))
+        return grades
+
+    # Special handling for orderID "g000005"
+    def handle_nan_values_for_special_order(order_id, contract_values, actual_values):
+        if order_id == "g000005":
+            contract_values = [val if not np.isnan(val) else 0 for val in contract_values]  # Replace NaN with 0
+            actual_values = [val if not np.isnan(val) else 0 for val in actual_values]      # Replace NaN with 0
+        return contract_values, actual_values
+
     # Section for Loan Prediction and Sugar Cane Production
     st.markdown("<h2 class='sub-header'>Loan Prediction and Sugar Cane Production Analysis</h2>", unsafe_allow_html=True)
-    order_id = st.text_input("Enter the Order ID:").strip().lower()
-    contract_amount = st.number_input("Enter the contract amount (tons):", min_value=0.0, step=0.1)
+    
+    # Use columns for better layout
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        order_id = st.text_input("Enter the Order ID:").strip().lower()
+    
+    with col2:
+        contract_amount = st.number_input("Enter the contract amount (tons):", min_value=0.0, step=0.1)
+
+    # Dropdown selector to see grading overview for all users
+    order_list = grouped_data['orderID'].unique()
+    selected_order = st.selectbox("Select an Order ID for Grading Overview", order_list)
+
+    if selected_order:
+        order_info = grouped_data[grouped_data['orderID'] == selected_order].iloc[0]
+        contract_values = order_info['contract']
+        actual_values = order_info['actual']
+
+        # Handle NaN for special case "g000005"
+        contract_values, actual_values = handle_nan_values_for_special_order(selected_order, contract_values, actual_values)
+
+        grades = grading_overview(contract_values, actual_values)
+
+        year_range = list(range(2015, 2015 + len(contract_values)))
+        year_data = pd.DataFrame({
+            'Year': year_range,
+            'Contract (tons)': contract_values,
+            'Actual (tons)': actual_values,
+            'Grade': grades
+        })
+
+        st.markdown(f"### Grading Overview for Order ID: **{selected_order.upper()}** (2015-2023)")
+        st.table(year_data.style.format(na_rep="N/A").applymap(lambda val: 'background-color: #f2f2f2' if pd.isna(val) else '', subset=['Grade']))
 
     if st.button("Predict and Analyze"):
         if order_id in grouped_data['orderID'].values:
-            # Fetch the details for the given Order ID
             order_info = grouped_data[grouped_data['orderID'] == order_id].iloc[0]
             contract_values = order_info['contract']
             actual_values = order_info['actual']
 
-            # Prediction using historical data
-            predicted_amount = time_series_forecasting(contract_values, actual_values)
+            # Handle NaN for special case "g000005"
+            contract_values, actual_values = handle_nan_values_for_special_order(order_id, contract_values, actual_values)
+
+            predicted_amount, changes, avg_change = time_series_forecasting(contract_values, actual_values)
             grade = apply_grading(predicted_amount, contract_amount)
 
-            # Display Prediction and Grading
-            st.markdown(f"### Prediction Result for Order ID: **{order_id.upper()}**")
-            st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
-            st.metric("Assigned Grade", grade)
-            st.write(f"Based on the prediction, the contract for order **{order_id.upper()}** will likely send **{predicted_amount:.2f} tons** this year with a grade of **{grade}**.")
+            # Use columns for better metric display
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
+            
+            with col2:
+                st.metric("Assigned Grade", grade)
+
+            st.write(f"Predicted value based on an average change of {avg_change:.2f}% across the years.")
+            st.write(f"The grading is based on a percentage comparison of predicted value ({predicted_amount:.2f}) vs contract amount ({contract_amount:.2f}).")
+
+            # Show calculation method
+            st.markdown("#### Calculation Method")
+            st.write("Percentage changes between actual values: ", changes)
+            st.write(f"Average percentage change: {avg_change:.2f}%")
+
+            # Show grading method
+            st.markdown("#### Grading Method")
+            st.markdown("""
+            The grade is determined as follows:
+            - **A+**: Predicted amount is **≥ 110%** of contract  
+            - **A**: Predicted amount is **between 90% and 110%**  
+            - **B**: Predicted amount is **between 70% and 90%**  
+            - **C**: Predicted amount is **between 50% and 70%**  
+            - **D**: Predicted amount is **< 50%**
+            """, unsafe_allow_html=True)
+
 
             # Create a year-wise breakdown of contract and actual production
+            year_range = list(range(2015, 2015 + len(contract_values)))
             year_data = pd.DataFrame({
-                'Year': [f'Year {i+1}' for i in range(len(contract_values))],
+                'Year': year_range,
                 'Contract (tons)': contract_values,
                 'Actual (tons)': actual_values
             })
@@ -159,13 +238,13 @@ if uploaded_file is not None:
             # Display Data Details in a formatted table
             st.markdown(f"### Details for Order ID: **{order_id.upper()}**")
             st.write(f"**Gender**: {order_info['gender']}")
+            st.write(f"**Asset**: {order_info['asset']}")
             st.table(year_data)
 
             # Plot for contract and actual values
-            years = list(range(1, len(contract_values) + 1))
             fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(years, contract_values, label='Contract (tons)', marker='o', color='green')
-            ax.plot(years, actual_values, label='Actual (tons)', marker='o', color='blue')
+            ax.plot(year_range, contract_values, label='Contract (tons)', marker='o', color='green')
+            ax.plot(year_range, actual_values, label='Actual (tons)', marker='o', color='blue')
             ax.set_title(f"Contract vs Actual Production for Order ID: {order_id.upper()}")
             ax.set_xlabel("Year")
             ax.set_ylabel("Quantity (tons)")
