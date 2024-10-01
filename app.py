@@ -121,25 +121,26 @@ if uploaded_file is not None:
         predicted_value = last_year_actual * (1 + avg_change / 100)
         return predicted_value, changes, avg_change
 
-    # Grading function
+    # Grading function with detailed explanation
     def apply_grading(predicted_amount, contract_amount):
         percentage = predicted_amount / contract_amount * 100
         if percentage >= 110:
-            return 'A'
+            return 'A', f"The predicted amount is {percentage:.2f}% of the contract amount, which is higher than 110%. This indicates excellent performance."
         elif 90 <= percentage < 110:
-            return 'A-'
+            return 'A-', f"The predicted amount is {percentage:.2f}% of the contract amount, falling between 90% and 110%. This shows good performance."
         elif 70 <= percentage < 90:
-            return 'B'
+            return 'B', f"The predicted amount is {percentage:.2f}% of the contract amount, between 70% and 90%. This indicates average performance."
         elif 50 <= percentage < 70:
-            return 'C'
+            return 'C', f"The predicted amount is {percentage:.2f}% of the contract amount, between 50% and 70%. This indicates below-average performance."
         else:
-            return 'D'
+            return 'D', f"The predicted amount is {percentage:.2f}% of the contract amount, which is below 50%. This suggests poor performance."
 
     # Overview of grading for each year
     def grading_overview(contract_values, actual_values):
         grades = []
         for contract, actual in zip(contract_values, actual_values):
-            grades.append(apply_grading(actual, contract))
+            grade, reason = apply_grading(actual, contract)
+            grades.append((grade, reason))
         return grades
 
     # Special handling for orderID "g000005"
@@ -180,7 +181,8 @@ if uploaded_file is not None:
             'Year': year_range,
             'Contract (tons)': contract_values,
             'Actual (tons)': actual_values,
-            'Grade': grades
+            'Grade': [grade for grade, _ in grades],
+            'Reason': [reason for _, reason in grades]
         })
 
         st.markdown(f"### Grading Overview for Order ID: **{selected_order.upper()}** (2015-2023)")
@@ -196,7 +198,7 @@ if uploaded_file is not None:
             contract_values, actual_values = handle_nan_values_for_special_order(order_id, contract_values, actual_values)
 
             predicted_amount, changes, avg_change = time_series_forecasting(contract_values, actual_values)
-            grade = apply_grading(predicted_amount, contract_amount)
+            grade, grade_reason = apply_grading(predicted_amount, contract_amount)
 
             # Use columns for better metric display
             col1, col2 = st.columns(2)
@@ -207,56 +209,18 @@ if uploaded_file is not None:
             with col2:
                 st.metric("Assigned Grade", grade)
 
-            st.write(f"Predicted value based on an average change of {avg_change:.2f}% across the years.")
-            st.write(f"The grading is based on a percentage comparison of predicted value ({predicted_amount:.2f}) vs contract amount ({contract_amount:.2f}).")
+            st.warning(f"### Grade Explanation:\n{grade_reason}")
 
-            # Show calculation method
-            st.markdown("#### Calculation Method")
-            st.write("Percentage changes between actual values: ", changes)
-            st.write(f"Average percentage change: {avg_change:.2f}%")
+            # Create a new figure for the plot
+            fig, ax = plt.subplots(figsize=(10, 4))  # Create a Figure and Axes
 
-            # Show grading method
-            st.markdown("#### Grading Method")
-            st.markdown("""
-            The grade is determined as follows:
-            - **A+**: Predicted amount is **≥ 110%** of contract  
-            - **A**: Predicted amount is **between 90% and 110%**  
-            - **B**: Predicted amount is **between 70% and 90%**  
-            - **C**: Predicted amount is **between 50% and 70%**  
-            - **D**: Predicted amount is **< 50%**
-            """, unsafe_allow_html=True)
-
-
-            # Create a year-wise breakdown of contract and actual production
-            year_range = list(range(2015, 2015 + len(contract_values)))
-            year_data = pd.DataFrame({
-                'Year': year_range,
-                'Contract (tons)': contract_values,
-                'Actual (tons)': actual_values
-            })
-
-            # Display Data Details in a formatted table
-            st.markdown(f"### Details for Order ID: **{order_id.upper()}**")
-            st.write(f"**Gender**: {order_info['gender']}")
-            st.write(f"**Asset**: {order_info['asset']}")
-            st.table(year_data)
-
-            # Plot for contract and actual values
-            fig, ax = plt.subplots(figsize=(8, 4))  # Adjusted the figsize to make it smaller
-            ax.plot(year_range, contract_values, label='Contract (tons)', marker='o', color='orange')
-            ax.plot(year_range, actual_values, label='Actual (tons)', marker='o', color='blue')
-            ax.set_title(f"Contract vs Actual Production for Order ID: {order_id.upper()}")
+            # Plot the changes and average line
+            ax.plot(list(range(1, len(changes) + 1)), changes, marker='o', linestyle='-', color='skyblue', label='Yearly Changes')
+            ax.axhline(y=avg_change, color='orange', linestyle='--', label=f'Average Change: {avg_change:.2f}%')
             ax.set_xlabel("Year")
-            ax.set_ylabel("Quantity (tons)")
+            ax.set_ylabel("Percentage Change (%)")
+            ax.set_title("Yearly Percentage Change in Production")
             ax.legend()
-            ax.grid(True)
-            plt.tight_layout()
-            st.pyplot(fig)
-        else:
-            st.error("Order ID not found in the dataset.")
-else:
-    st.markdown("<div class='stWarning'>Please upload a CSV file to proceed with the analysis.</div>", unsafe_allow_html=True)
 
-# Footer for the app
-st.markdown("---")
-st.markdown("_This app supports farmers and agricultural workers by predicting loan contract performance and analyzing sugar cane production._")
+            # Display the plot in Streamlit
+            st.pyplot(fig)
