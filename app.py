@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Set the Streamlit page theme
 st.set_page_config(
     page_title="Agriculture Loan and Sugar Cane Production Analysis",
     page_icon="🌾",
@@ -10,7 +9,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS for beautification
 st.markdown("""
     <style>
         body {
@@ -81,26 +79,26 @@ st.markdown("""
             padding: 12px;
         }
         .reason-text {
-            font-size: 1.3rem;  /* Adjusted font size for the reason text */
-            color: #1B5E20;
+            font-size: 1.3rem;
+            color: #FFFFFF;
             text-align: center;
             font-weight: bold;
             margin-top: 10px;
+            background-color: #388E3C;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
     </style>
 """, unsafe_allow_html=True)
 
-# Streamlit app title
 st.markdown("<h1 class='header-title'>🌾 Agriculture Loan Prediction and Sugar Cane Production Analysis 🌾</h1>", unsafe_allow_html=True)
 
-# Section for Uploading the CSV File
 st.markdown("<h2 class='sub-header'>Upload CSV File</h2>", unsafe_allow_html=True)
 st.write("Upload your CSV file to analyze agriculture loan performance and sugar cane production trends.")
 
-# File uploader for CSV files with enhanced UI
 uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"], label_visibility="visible")
 
-# Function to load data from the uploaded file
 @st.cache_data
 def load_data(uploaded_file):
     return pd.read_csv(uploaded_file)
@@ -108,15 +106,12 @@ def load_data(uploaded_file):
 if uploaded_file is not None:
     df = load_data(uploaded_file)
 
-    # Preprocess data
-    df['orderID'] = df['orderID'].str.strip().str.lower()  # Normalize order IDs
-    df['gender'] = df['gender'].apply(lambda x: 'Male' if x == 1 else 'Female')  # Convert gender to readable format
+    df['orderID'] = df['orderID'].str.strip().str.lower()
+    df['gender'] = df['gender'].apply(lambda x: 'Male' if x == 1 else 'Female')
 
-    # Add a placeholder for 'asset' if it doesn't exist in the dataset
     if 'asset' not in df.columns:
-        df['asset'] = np.random.randint(5000, 100000, size=len(df))  # Random placeholder asset values
+        df['asset'] = np.random.randint(5000, 100000, size=len(df))
 
-    # Group data for analysis
     grouped_data = df.groupby('orderID').agg({
         'gender': 'first',
         'contract': list,
@@ -124,7 +119,6 @@ if uploaded_file is not None:
         'asset': 'first'
     }).reset_index()
 
-    # Enhanced Prediction Function based on historical data trends
     def time_series_forecasting(contract_values, actual_values):
         changes = np.diff(actual_values) / np.array(actual_values[:-1]) * 100
         avg_change = np.mean(changes)
@@ -132,7 +126,6 @@ if uploaded_file is not None:
         predicted_value = last_year_actual * (1 + avg_change / 100)
         return predicted_value, changes, avg_change
 
-    # Grading function with detailed explanation and reason for cane production
     def apply_grading(predicted_amount, contract_amount):
         percentage = predicted_amount / contract_amount * 100
         base_reason = "The prediction is based on historical data trends and the contribution of Phuwiangosaurus sirindorne to the cane production."
@@ -148,7 +141,6 @@ if uploaded_file is not None:
         else:
             return 'D', f"The predicted amount is {percentage:.2f}% of the contract amount, which is below 50%. Poor performance. {base_reason}"
 
-    # Overview of grading for each year
     def grading_overview(contract_values, actual_values):
         grades = []
         for contract, actual in zip(contract_values, actual_values):
@@ -156,17 +148,14 @@ if uploaded_file is not None:
             grades.append((grade, reason))
         return grades
 
-    # Special handling for orderID "g000005"
     def handle_nan_values_for_special_order(order_id, contract_values, actual_values):
         if order_id == "g000005":
-            contract_values = [val if not np.isnan(val) else 0 for val in contract_values]  # Replace NaN with 0
-            actual_values = [val if not np.isnan(val) else 0 for val in actual_values]      # Replace NaN with 0
+            contract_values = [val if not np.isnan(val) else 0 for val in contract_values]
+            actual_values = [val if not np.isnan(val) else 0 for val in actual_values]
         return contract_values, actual_values
 
-    # Section for Loan Prediction and Sugar Cane Production
     st.markdown("<h2 class='sub-header'>Loan Prediction and Sugar Cane Production Analysis</h2>", unsafe_allow_html=True)
     
-    # Use columns for better layout
     col1, col2 = st.columns([2, 1])
     
     with col1:
@@ -175,7 +164,6 @@ if uploaded_file is not None:
     with col2:
         contract_amount = st.number_input("Enter the contract amount (tons):", min_value=0.0, step=0.1)
 
-    # Dropdown selector to see grading overview for all users
     order_list = grouped_data['orderID'].unique()
     selected_order = st.selectbox("Select an Order ID for Grading Overview", order_list)
 
@@ -184,7 +172,6 @@ if uploaded_file is not None:
         contract_values = order_info['contract']
         actual_values = order_info['actual']
 
-        # Handle NaN for special case "g000005"
         contract_values, actual_values = handle_nan_values_for_special_order(selected_order, contract_values, actual_values)
 
         grades = grading_overview(contract_values, actual_values)
@@ -207,27 +194,22 @@ if uploaded_file is not None:
                 contract_values = order_info['contract']
                 actual_values = order_info['actual']
 
-                # Handle NaN for special case "g000005"
                 contract_values, actual_values = handle_nan_values_for_special_order(order_id, contract_values, actual_values)
 
                 predicted_amount, changes, avg_change = time_series_forecasting(contract_values, actual_values)
                 grade, grade_reason = apply_grading(predicted_amount, contract_amount)
 
-                # Use columns for better metric display
                 col1, col2 = st.columns(2)
 
                 with col1:
                     st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
-                    # Ensure this line is displayed as a single line
                     st.markdown("<p class='reason-text'>Because Phuwiangosaurus sirindorne contributes to the cane production most.</p>", unsafe_allow_html=True)
                     st.metric("Average Change (%)", f"{avg_change:.2f}")
 
                 with col2:
                     st.metric("Assigned Grade", grade)
 
-                # Display the grade explanation
                 st.warning(f"### Grade Explanation:\n{grade_reason}")
 
             else:
                 st.error("Order ID not found in the dataset.")
-
