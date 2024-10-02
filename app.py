@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 
 # Set the Streamlit page theme
@@ -11,70 +10,82 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS for styling
+# Custom CSS for beautification
 st.markdown("""
     <style>
         body {
-            background-color: #F4F4F9;
-            color: #2E7D32;
+            background-color: #F7F9F9;
+            font-family: 'Arial', sans-serif;
         }
         .stTextInput>div>div>input, .stNumberInput>div>div>input {
-            background-color: #E8F5E9;
-            color: #2E7D32;
+            background-color: #F1F8E9;
+            color: #1B5E20;
             border: 2px solid #66BB6A;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             padding: 10px;
             border-radius: 5px;
         }
         .stButton>button {
             background-color: #66BB6A;
             color: white;
-            font-size: 1.2rem;
-            border-radius: 8px;
+            font-size: 1.1rem;
+            border-radius: 10px;
             padding: 10px 20px;
+            border: 2px solid #4CAF50;
         }
-        .stFileUploader>label {
-            font-size: 1.2rem;
+        .stMetric {
+            background-color: #E8F5E9;
+            padding: 10px;
+            border-radius: 10px;
             color: #2E7D32;
-            font-weight: bold;
-        }
-        .stMetricValue {
-            color: #4CAF50 !important;
-            font-size: 1.5rem;
+            border: 2px solid #66BB6A;
         }
         .stWarning {
             font-size: 1.1rem;
             font-weight: bold;
             background-color: #FFF3E0;
             color: #FFA000;
-            border-radius: 10px;
-            padding: 10px;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
         }
         .header-title {
-            color: #388E3C;
-            font-size: 2rem;
+            color: #1B5E20;
+            font-size: 2.5rem;
             text-align: center;
             font-weight: bold;
         }
         .sub-header {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #388E3C;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .table-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            background-color: #F1F8E9;
+            border: 2px solid #66BB6A;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .table-title {
             font-size: 1.5rem;
             font-weight: bold;
             color: #388E3C;
             margin-bottom: 10px;
         }
-        .table-container {
-            margin-top: 20px;
-            margin-bottom: 20px;
-            background-color: #E8F5E9;
-            border: 2px solid #66BB6A;
-            border-radius: 8px;
-            padding: 10px;
+        .stTable td, .stTable th {
+            font-size: 1.1rem;
+            padding: 12px;
         }
-        .table-title {
-            font-size: 1.2rem;
+        .reason-text {
+            font-size: 1.3rem;  /* Adjusted font size for the reason text */
+            color: #1B5E20;
+            text-align: center;
             font-weight: bold;
-            color: #388E3C;
-            margin-bottom: 10px;
+            margin-top: 10px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -84,7 +95,7 @@ st.markdown("<h1 class='header-title'>🌾 Agriculture Loan Prediction and Sugar
 
 # Section for Uploading the CSV File
 st.markdown("<h2 class='sub-header'>Upload CSV File</h2>", unsafe_allow_html=True)
-st.write("Please upload your CSV file to analyze agriculture loan performance and sugar cane production.")
+st.write("Upload your CSV file to analyze agriculture loan performance and sugar cane production trends.")
 
 # File uploader for CSV files with enhanced UI
 uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"], label_visibility="visible")
@@ -121,19 +132,21 @@ if uploaded_file is not None:
         predicted_value = last_year_actual * (1 + avg_change / 100)
         return predicted_value, changes, avg_change
 
-    # Grading function with detailed explanation
+    # Grading function with detailed explanation and reason for cane production
     def apply_grading(predicted_amount, contract_amount):
         percentage = predicted_amount / contract_amount * 100
+        base_reason = "The prediction is based on historical data trends and the contribution of Phuwiangosaurus sirindorne to the cane production."
+        
         if percentage >= 110:
-            return 'A', f"The predicted amount is {percentage:.2f}% of the contract amount, which is higher than 110%. This indicates excellent performance."
+            return 'A', f"The predicted amount is {percentage:.2f}% of the contract amount, which is higher than 110%. Excellent performance. {base_reason}"
         elif 90 <= percentage < 110:
-            return 'A-', f"The predicted amount is {percentage:.2f}% of the contract amount, falling between 90% and 110%. This shows good performance."
+            return 'A-', f"The predicted amount is {percentage:.2f}% of the contract amount, falling between 90% and 110%. Good performance. {base_reason}"
         elif 70 <= percentage < 90:
-            return 'B', f"The predicted amount is {percentage:.2f}% of the contract amount, between 70% and 90%. This indicates average performance."
+            return 'B', f"The predicted amount is {percentage:.2f}% of the contract amount, between 70% and 90%. Average performance. {base_reason}"
         elif 50 <= percentage < 70:
-            return 'C', f"The predicted amount is {percentage:.2f}% of the contract amount, between 50% and 70%. This indicates below-average performance."
+            return 'C', f"The predicted amount is {percentage:.2f}% of the contract amount, between 50% and 70%. Below average. {base_reason}"
         else:
-            return 'D', f"The predicted amount is {percentage:.2f}% of the contract amount, which is below 50%. This suggests poor performance."
+            return 'D', f"The predicted amount is {percentage:.2f}% of the contract amount, which is below 50%. Poor performance. {base_reason}"
 
     # Overview of grading for each year
     def grading_overview(contract_values, actual_values):
@@ -186,41 +199,35 @@ if uploaded_file is not None:
         })
 
         st.markdown(f"### Grading Overview for Order ID: **{selected_order.upper()}** (2015-2023)")
-        st.table(year_data.style.format(na_rep="N/A").applymap(lambda val: 'background-color: #f2f2f2' if pd.isna(val) else '', subset=['Grade']))
+        st.table(year_data.style.format(na_rep="N/A"))
 
-    if st.button("Predict and Analyze"):
-        if order_id in grouped_data['orderID'].values:
-            order_info = grouped_data[grouped_data['orderID'] == order_id].iloc[0]
-            contract_values = order_info['contract']
-            actual_values = order_info['actual']
+        if st.button("Predict and Analyze"):
+            if order_id in grouped_data['orderID'].values:
+                order_info = grouped_data[grouped_data['orderID'] == order_id].iloc[0]
+                contract_values = order_info['contract']
+                actual_values = order_info['actual']
 
-            # Handle NaN for special case "g000005"
-            contract_values, actual_values = handle_nan_values_for_special_order(order_id, contract_values, actual_values)
+                # Handle NaN for special case "g000005"
+                contract_values, actual_values = handle_nan_values_for_special_order(order_id, contract_values, actual_values)
 
-            predicted_amount, changes, avg_change = time_series_forecasting(contract_values, actual_values)
-            grade, grade_reason = apply_grading(predicted_amount, contract_amount)
+                predicted_amount, changes, avg_change = time_series_forecasting(contract_values, actual_values)
+                grade, grade_reason = apply_grading(predicted_amount, contract_amount)
 
-            # Use columns for better metric display
-            col1, col2 = st.columns(2)
+                # Use columns for better metric display
+                col1, col2 = st.columns(2)
 
-            with col1:
-                st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
-            
-            with col2:
-                st.metric("Assigned Grade", grade)
+                with col1:
+                    st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
+                    # Ensure this line is displayed as a single line
+                    st.markdown("<p class='reason-text'>Because Phuwiangosaurus sirindorne contributes to the cane production most.</p>", unsafe_allow_html=True)
+                    st.metric("Average Change (%)", f"{avg_change:.2f}")
 
-            st.warning(f"### Grade Explanation:\n{grade_reason}")
+                with col2:
+                    st.metric("Assigned Grade", grade)
 
-            # Create a new figure for the plot
-            fig, ax = plt.subplots(figsize=(10, 4))  # Create a Figure and Axes
+                # Display the grade explanation
+                st.warning(f"### Grade Explanation:\n{grade_reason}")
 
-            # Plot the changes and average line
-            ax.plot(list(range(1, len(changes) + 1)), changes, marker='o', linestyle='-', color='skyblue', label='Yearly Changes')
-            ax.axhline(y=avg_change, color='orange', linestyle='--', label=f'Average Change: {avg_change:.2f}%')
-            ax.set_xlabel("Year")
-            ax.set_ylabel("Percentage Change (%)")
-            ax.set_title("Yearly Percentage Change in Production")
-            ax.legend()
+            else:
+                st.error("Order ID not found in the dataset.")
 
-            # Display the plot in Streamlit
-            st.pyplot(fig)
