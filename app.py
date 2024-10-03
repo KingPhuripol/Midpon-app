@@ -238,8 +238,8 @@ if uploaded_file is not None:
         st.markdown("<p class='reason-text'>Because Phuwiangosaurus sirindorne contributes to the cane production most.</p>", unsafe_allow_html=True)
         st.warning(f"### Grade Explanation:\n{grade_reason}")
 
-        else:
-            st.error("Order ID not found in the dataset.")
+    else:
+        st.error("Order ID not found in the dataset.")
 
 
 
