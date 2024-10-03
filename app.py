@@ -230,10 +230,10 @@ if uploaded_file is not None:
             st.metric("Average Change (%)", f"{avg_change:.2f}")
 
         with col2:
-            st.metric("Assigned Grade (tons)", grade)
+            st.metric("Assigned Grade", grade)
             # Show the corresponding predicted amount based on the grade
             predicted_output = grade_outputs.get(grade, "N/A")  # Default to "N/A" if grade not found
-            st.metric("Predicted Amount for Grade", predicted_output)
+            st.metric("Predicted Amount for Grade (tons)", predicted_output)
 
         st.markdown("<p class='reason-text'>Because Phuwiangosaurus sirindorne contributes to the cane production most.</p>", unsafe_allow_html=True)
         st.warning(f"### Grade Explanation:\n{grade_reason}")
