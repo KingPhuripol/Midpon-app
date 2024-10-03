@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt  # Importing matplotlib for advanced plotting
 
+# Setting page configuration
 st.set_page_config(
     page_title="Agriculture Loan and Sugar Cane Production Analysis",
     page_icon="🌾",
@@ -9,6 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Custom CSS for styling
 st.markdown("""
     <style>
         body {
@@ -92,11 +95,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Header section
 st.markdown("<h1 class='header-title'>🌾 Agriculture Loan Prediction and Sugar Cane Production Analysis 🌾</h1>", unsafe_allow_html=True)
-
 st.markdown("<h2 class='sub-header'>Upload CSV File</h2>", unsafe_allow_html=True)
 st.write("Upload your CSV file to analyze agriculture loan performance and sugar cane production trends.")
 
+# File uploader
 uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"], label_visibility="visible")
 
 @st.cache_data
@@ -106,12 +110,15 @@ def load_data(uploaded_file):
 if uploaded_file is not None:
     df = load_data(uploaded_file)
 
+    # Data preprocessing
     df['orderID'] = df['orderID'].str.strip().str.lower()
     df['gender'] = df['gender'].apply(lambda x: 'Male' if x == 1 else 'Female')
 
+    # Adding a random asset value if 'asset' column is missing
     if 'asset' not in df.columns:
         df['asset'] = np.random.randint(5000, 100000, size=len(df))
 
+    # Grouping data by 'orderID'
     grouped_data = df.groupby('orderID').agg({
         'gender': 'first',
         'contract': list,
@@ -119,6 +126,7 @@ if uploaded_file is not None:
         'asset': 'first'
     }).reset_index()
 
+    # Function for time series forecasting
     def time_series_forecasting(contract_values, actual_values):
         changes = np.diff(actual_values) / np.array(actual_values[:-1]) * 100
         avg_change = np.mean(changes)
@@ -126,14 +134,15 @@ if uploaded_file is not None:
         predicted_value = last_year_actual * (1 + avg_change / 100)
         return predicted_value, changes, avg_change
 
+    # Function to apply grading based on predicted and contract amounts
     def apply_grading(predicted_amount, contract_amount):
         percentage = predicted_amount / contract_amount * 100
         base_reason = "The prediction is based on historical data trends and the contribution of Phuwiangosaurus sirindorne to the cane production."
         
         if percentage >= 110:
-            return 'A', f"The predicted amount is {percentage:.2f}% of the contract amount, which is higher than 110%. Excellent performance. {base_reason}"
+            return 'A+', f"The predicted amount is {percentage:.2f}% of the contract amount, which is higher than 110%. Excellent performance. {base_reason}"
         elif 90 <= percentage < 110:
-            return 'A-', f"The predicted amount is {percentage:.2f}% of the contract amount, falling between 90% and 110%. Good performance. {base_reason}"
+            return 'A', f"The predicted amount is {percentage:.2f}% of the contract amount, falling between 90% and 110%. Good performance. {base_reason}"
         elif 70 <= percentage < 90:
             return 'B', f"The predicted amount is {percentage:.2f}% of the contract amount, between 70% and 90%. Average performance. {base_reason}"
         elif 50 <= percentage < 70:
@@ -141,6 +150,7 @@ if uploaded_file is not None:
         else:
             return 'D', f"The predicted amount is {percentage:.2f}% of the contract amount, which is below 50%. Poor performance. {base_reason}"
 
+    # Function to generate grading overview
     def grading_overview(contract_values, actual_values):
         grades = []
         for contract, actual in zip(contract_values, actual_values):
@@ -148,12 +158,14 @@ if uploaded_file is not None:
             grades.append((grade, reason))
         return grades
 
+    # Handling NaN values for special orders
     def handle_nan_values_for_special_order(order_id, contract_values, actual_values):
         if order_id == "g000005":
             contract_values = [val if not np.isnan(val) else 0 for val in contract_values]
             actual_values = [val if not np.isnan(val) else 0 for val in actual_values]
         return contract_values, actual_values
 
+    # Main analysis section
     st.markdown("<h2 class='sub-header'>Loan Prediction and Sugar Cane Production Analysis</h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([2, 1])
@@ -188,27 +200,47 @@ if uploaded_file is not None:
         st.markdown(f"### Grading Overview for Order ID: **{selected_order.upper()}** (2015-2023)")
         st.table(year_data.style.format(na_rep="N/A"))
 
-        if st.button("Predict and Analyze"):
-            if order_id in grouped_data['orderID'].values:
-                order_info = grouped_data[grouped_data['orderID'] == order_id].iloc[0]
-                contract_values = order_info['contract']
-                actual_values = order_info['actual']
+        # Create a line chart
+        st.line_chart(year_data.set_index('Year')[['Contract (tons)', 'Actual (tons)']])
 
-                contract_values, actual_values = handle_nan_values_for_special_order(order_id, contract_values, actual_values)
+    if st.button("Predict and Analyze"):
+      if order_id in grouped_data['orderID'].values:
+        order_info = grouped_data[grouped_data['orderID'] == order_id].iloc[0]
+        contract_values = order_info['contract']
+        actual_values = order_info['actual']
 
-                predicted_amount, changes, avg_change = time_series_forecasting(contract_values, actual_values)
-                grade, grade_reason = apply_grading(predicted_amount, contract_amount)
+        contract_values, actual_values = handle_nan_values_for_special_order(order_id, contract_values, actual_values)
 
-                col1, col2 = st.columns(2)
+        predicted_amount, changes, avg_change = time_series_forecasting(contract_values, actual_values)
+        grade, grade_reason = apply_grading(predicted_amount, contract_amount)
 
-                with col1:
-                    st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
-                    st.metric("Average Change (%)", f"{avg_change:.2f}")
+        col1, col2 = st.columns(2)
 
-                with col2:
-                    st.metric("Assigned Grade", grade)
-                st.markdown("<p class='reason-text'>Because Phuwiangosaurus sirindorne contributes to the cane production most.</p>", unsafe_allow_html=True)
-                st.warning(f"### Grade Explanation:\n{grade_reason}")
+        # Predefined output for grades and their corresponding predicted amounts
+        grade_outputs = {
+            'A+': '507.36',
+            'A': '485.40',
+            'B': '345.58',
+            'C': '207.16',
+            'D': '83.94'
+        }
 
-            else:
-                st.error("Order ID not found in the dataset.")
+        with col1:
+            st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
+            st.metric("Average Change (%)", f"{avg_change:.2f}")
+
+        with col2:
+            st.metric("Assigned Grade (tons)", grade)
+            # Show the corresponding predicted amount based on the grade
+            predicted_output = grade_outputs.get(grade, "N/A")  # Default to "N/A" if grade not found
+            st.metric("Predicted Amount for Grade", predicted_output)
+
+        st.markdown("<p class='reason-text'>Because Phuwiangosaurus sirindorne contributes to the cane production most.</p>", unsafe_allow_html=True)
+        st.warning(f"### Grade Explanation:\n{grade_reason}")
+
+    else:
+        st.error("Order ID not found in the dataset.")
+
+
+
+
