@@ -1,9 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error
 
 st.set_page_config(
     page_title="Agriculture Loan and Sugar Cane Production Analysis",
@@ -122,33 +119,40 @@ if uploaded_file is not None:
         'asset': 'first'
     }).reset_index()
 
-    def train_random_forest_model(df):
-        # Prepare data for training
-        features = df[['contract', 'asset']]
-        target = df['actual']
-        
-        # Flatten the lists
-        features = pd.DataFrame({
-            'contract': [item for sublist in features['contract'] for item in sublist],
-            'asset': [item for sublist in features['asset'] for item in sublist]
-        })
-        target = [item for sublist in target for item in sublist]
-        
-        # Split the dataset
-        X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
-        
-        # Train the Random Forest model
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
-        
-        # Make predictions and evaluate
-        predictions = model.predict(X_test)
-        mae = mean_absolute_error(y_test, predictions)
-        st.write(f"Mean Absolute Error of the model: {mae:.2f}")
+    def time_series_forecasting(contract_values, actual_values):
+        changes = np.diff(actual_values) / np.array(actual_values[:-1]) * 100
+        avg_change = np.mean(changes)
+        last_year_actual = actual_values[-1]
+        predicted_value = last_year_actual * (1 + avg_change / 100)
+        return predicted_value, changes, avg_change
 
-        return model
+    def apply_grading(predicted_amount, contract_amount):
+        percentage = predicted_amount / contract_amount * 100
+        base_reason = "The prediction is based on historical data trends and the contribution of Phuwiangosaurus sirindorne to the cane production."
+        
+        if percentage >= 110:
+            return 'A', f"The predicted amount is {percentage:.2f}% of the contract amount, which is higher than 110%. Excellent performance. {base_reason}"
+        elif 90 <= percentage < 110:
+            return 'A-', f"The predicted amount is {percentage:.2f}% of the contract amount, falling between 90% and 110%. Good performance. {base_reason}"
+        elif 70 <= percentage < 90:
+            return 'B', f"The predicted amount is {percentage:.2f}% of the contract amount, between 70% and 90%. Average performance. {base_reason}"
+        elif 50 <= percentage < 70:
+            return 'C', f"The predicted amount is {percentage:.2f}% of the contract amount, between 50% and 70%. Below average. {base_reason}"
+        else:
+            return 'D', f"The predicted amount is {percentage:.2f}% of the contract amount, which is below 50%. Poor performance. {base_reason}"
 
-    model = train_random_forest_model(df)
+    def grading_overview(contract_values, actual_values):
+        grades = []
+        for contract, actual in zip(contract_values, actual_values):
+            grade, reason = apply_grading(actual, contract)
+            grades.append((grade, reason))
+        return grades
+
+    def handle_nan_values_for_special_order(order_id, contract_values, actual_values):
+        if order_id == "g000005":
+            contract_values = [val if not np.isnan(val) else 0 for val in contract_values]
+            actual_values = [val if not np.isnan(val) else 0 for val in actual_values]
+        return contract_values, actual_values
 
     st.markdown("<h2 class='sub-header'>Loan Prediction and Sugar Cane Production Analysis</h2>", unsafe_allow_html=True)
     
@@ -192,19 +196,14 @@ if uploaded_file is not None:
 
                 contract_values, actual_values = handle_nan_values_for_special_order(order_id, contract_values, actual_values)
 
-                # Prepare features for prediction
-                features = pd.DataFrame({
-                    'contract': [np.mean(contract_values)],  # Average contract amount
-                    'asset': [order_info['asset']]
-                })
-                predicted_amount = model.predict(features)[0]
-                
+                predicted_amount, changes, avg_change = time_series_forecasting(contract_values, actual_values)
                 grade, grade_reason = apply_grading(predicted_amount, contract_amount)
 
                 col1, col2 = st.columns(2)
 
                 with col1:
                     st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
+                    st.metric("Average Change (%)", f"{avg_change:.2f}")
 
                 with col2:
                     st.metric("Assigned Grade", grade)
