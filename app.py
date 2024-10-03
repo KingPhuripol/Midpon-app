@@ -203,12 +203,11 @@ if uploaded_file is not None:
 
                 with col1:
                     st.metric("Predicted Amount (tons)", f"{predicted_amount:.2f}")
-                    st.markdown("<p class='reason-text'>Because Phuwiangosaurus sirindorne contributes to the cane production most.</p>", unsafe_allow_html=True)
                     st.metric("Average Change (%)", f"{avg_change:.2f}")
 
                 with col2:
                     st.metric("Assigned Grade", grade)
-
+                st.markdown("<p class='reason-text'>Because Phuwiangosaurus sirindorne contributes to the cane production most.</p>", unsafe_allow_html=True)
                 st.warning(f"### Grade Explanation:\n{grade_reason}")
 
             else:
